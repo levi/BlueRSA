@@ -326,10 +326,46 @@ extension CryptorRSA {
 				if #available(macOS 10.14, iOS 12.0, watchOS 5.0, *) {
 					key = SecCertificateCopyKey(certData)
                 } else {
-                    key = try legacyCopyPublicKey(with: certData)
+                    #if os(macOS)
+
+                        // Now extract the public key from it...
+                        let status: OSStatus = withUnsafeMutablePointer(to: &key) { ptr in
+                            
+                            // Retrieves the public key from a certificate...
+                            SecCertificateCopyPublicKey(certData, UnsafeMutablePointer(ptr))
+                        }
+
+                        if status != errSecSuccess {
+                
+                            throw Error(code: ERR_EXTRACT_PUBLIC_KEY_FAILED, reason: "Unable to extract public key from data.")
+                        }
+
+                    #else
+                       
+                        key = SecCertificateCopyPublicKey(certData)
+
+                    #endif
                 }
             #else
-                key = try legacyCopyPublicKey(with: certData)
+                #if os(macOS)
+
+                    // Now extract the public key from it...
+                    let status: OSStatus = withUnsafeMutablePointer(to: &key) { ptr in
+                        
+                        // Retrieves the public key from a certificate...
+                        SecCertificateCopyPublicKey(certData, UnsafeMutablePointer(ptr))
+                    }
+
+                    if status != errSecSuccess {
+            
+                        throw Error(code: ERR_EXTRACT_PUBLIC_KEY_FAILED, reason: "Unable to extract public key from data.")
+                    }
+
+                #else
+                   
+                    key = SecCertificateCopyPublicKey(certData)
+
+                #endif
 			#endif
 		
 		
@@ -342,32 +378,6 @@ extension CryptorRSA {
 			
 		#endif		
 	}
-    
-    private class func legacyCopyPublicKey(with certData: SecCertificate) throws -> SecKey? {
-            var key: SecKey? = nil
-
-            #if os(macOS)
-
-                // Now extract the public key from it...
-                let status: OSStatus = withUnsafeMutablePointer(to: &key) { ptr in
-                    
-                    // Retrieves the public key from a certificate...
-                    SecCertificateCopyPublicKey(certData, UnsafeMutablePointer(ptr))
-                }
-
-                if status != errSecSuccess {
-        
-                    throw Error(code: ERR_EXTRACT_PUBLIC_KEY_FAILED, reason: "Unable to extract public key from data.")
-                }
-
-            #else
-               
-                key = SecCertificateCopyPublicKey(certData)
-
-            #endif
-        
-            return key
-    }
 	
 	// MARK: -- Private Key Creation
 	
